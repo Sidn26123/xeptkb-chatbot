@@ -1,0 +1,38 @@
+# Core Libraries
+langchain==0.1.0
+langchain-community==0.0.13
+
+# LLM & Embeddings
+sentence-transformers
+transformers
+torch
+
+# Vector Database
+qdrant-client==1.7.3
+
+# Database
+mysql-connector-python==8.2.0
+pymysql==1.1.0
+
+# Web Framework (API)
+fastapi==0.109.0
+uvicorn==0.27.0
+pydantic==2.5.3
+
+# Utilities
+python-dotenv==1.0.0
+requests==2.31.0
+numpy==1.24.3
+pandas==2.1.4
+
+# Optional: Web UI
+streamlit==1.32.0
+plotly==5.18.0
+
+# Development
+pytest==7.4.4
+pytest-asyncio==0.23.3
+black==23.12.1
+flake8==7.0.0
+
+pydantic-settings

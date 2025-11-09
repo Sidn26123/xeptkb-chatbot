@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.7.4
+    container_name: qdrant-schedule
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    restart: unless-stopped
+    networks:
+      - schedule-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-schedule
+    ports:
+      - "${MYSQL_PORT}:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpass123
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    networks:
+      - schedule-network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-llama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    restart: unless-stopped
+    networks:
+      - schedule-network
+    entrypoint: /bin/sh -c "ollama serve & sleep 10 && ollama pull ${LLAMA_MODEL} && wait"
+
+  chatbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: schedule-chatbot
+    ports:
+      - "${APP_PORT}:8000"
+    env_file:
+      - .env
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=${QDRANT_PORT}
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - LLAMA_MODEL=${LLAMA_MODEL}
+      - DEBUG=${DEBUG}
+      - LOG_LEVEL=${LOG_LEVEL}
+    depends_on:
+      - qdrant
+      - mysql
+      - ollama
+    restart: unless-stopped
+    networks:
+      - schedule-network
+    volumes:
+      - ./data:/app/data
+
+  webui:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    container_name: schedule-webui
+    ports:
+      - "8501:8501"
+    environment:
+      - CHATBOT_API_URL=http://chatbot:${APP_PORT}
+    restart: unless-stopped
+    depends_on:
+      - chatbot
+    networks:
+      - schedule-network
+
+volumes:
+  qdrant_storage:
+  mysql_data:
+  ollama_models:
+
+networks:
+  schedule-network:
+    driver: bridge
+
